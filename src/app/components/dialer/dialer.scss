@@ -1,0 +1,710 @@
+// ─── Google Fonts import (add to index.html or styles.scss) ──────────────────
+// @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;600&display=swap');
+// Use system font stack that matches iOS
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
+:host {
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #ffffff;
+  --text-2: rgba(255, 255, 255, 0.6);
+  --text-3: rgba(255, 255, 255, 0.3);
+  --green: #34c759;
+  --red: #ff3b30;
+  --blue: #007aff;
+  --yellow: #ffd60a;
+  --key-bg: #2c2c2e;
+  --key-pressed: #3a3a3c;
+  --radius-key: 50%;
+  --font: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #000;
+  font-family: var(--font);
+}
+
+// ─── Phone shell ──────────────────────────────────────────────────────────────
+.phone-shell {
+  width: 100%;
+  max-width: 390px;
+  min-height: 100svh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+// ─── Status bar ───────────────────────────────────────────────────────────────
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 8px;
+  flex-shrink: 0;
+
+  .status-time {
+    font-size: 12px;
+    color: var(--text-2);
+    letter-spacing: .02em;
+  }
+
+  .settings-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    border-radius: 50%;
+    transition: background .2s, color .2s;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+  }
+
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    transition: background .3s, box-shadow .3s;
+
+    &.dot-gray {
+      background: var(--surface-3);
+    }
+
+    &.dot-yellow {
+      background: var(--yellow);
+      animation: pulse-dot 1.2s infinite;
+    }
+
+    &.dot-green {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    &.dot-red {
+      background: var(--red);
+    }
+  }
+}
+
+// ─── Settings panel ───────────────────────────────────────────────────────────
+.settings-panel {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideDown .25s ease;
+
+  .settings-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 11px;
+      color: var(--text-3);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: var(--font);
+      outline: none;
+      transition: border-color .2s;
+
+      &:focus {
+        border-color: var(--blue);
+      }
+
+      &::placeholder {
+        color: var(--text-3);
+      }
+    }
+  }
+}
+
+.btn-connect-full {
+  margin-top: 4px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: opacity .2s;
+
+  &:hover {
+    opacity: .85;
+  }
+
+  &.btn-connecting {
+    background: var(--surface-3);
+    color: var(--text-2);
+    cursor: not-allowed;
+  }
+}
+
+.btn-disconnect-full {
+  @extend .btn-connect-full;
+  background: var(--surface-2);
+  color: var(--red);
+}
+
+.error-msg {
+  font-size: 13px;
+  color: var(--red);
+  text-align: center;
+  padding: 4px 0;
+}
+
+// ─── Incoming call screen ─────────────────────────────────────────────────────
+.incoming-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px 24px 52px;
+  background: linear-gradient(180deg, #1a1a2e 0%, #000 60%);
+  animation: fadeIn .3s ease;
+
+  .incoming-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .incoming-label {
+    font-size: 14px;
+    color: var(--text-2);
+    letter-spacing: .02em;
+  }
+
+  .incoming-number {
+    font-size: 34px;
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: -.5px;
+  }
+
+  .incoming-sub {
+    font-size: 14px;
+    color: var(--text-2);
+  }
+
+  .incoming-actions {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+  }
+
+  .incoming-action-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.incoming-avatar {
+  width: 88px;
+  height: 88px;
+  background: var(--surface-2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+// ─── Active call screen ───────────────────────────────────────────────────────
+.active-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 24px 48px;
+  animation: fadeIn .3s ease;
+
+  .active-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-top: 8px;
+  }
+
+  .active-number {
+    font-size: 30px;
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: -.3px;
+  }
+
+  .active-status {
+    font-size: 15px;
+    color: var(--green);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+  }
+}
+
+.caller-avatar {
+  width: 72px;
+  height: 72px;
+  background: var(--surface-2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+
+  svg {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+// ─── Mini dialpad (during active call) ───────────────────────────────────────
+.mini-dialpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 8px 24px;
+  animation: slideDown .2s ease;
+
+  .mini-key {
+    background: var(--surface-2);
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 400;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background .1s;
+
+    &.pressed {
+      background: var(--surface-3);
+    }
+
+    &:active {
+      background: var(--surface-3);
+    }
+
+    .mini-digit {
+      display: block;
+    }
+  }
+}
+
+// ─── In-call controls ─────────────────────────────────────────────────────────
+.active-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+
+  .controls-row {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+  }
+
+  .control-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .control-label {
+    font-size: 12px;
+    color: var(--text-2);
+    letter-spacing: .01em;
+  }
+}
+
+.btn-control {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: none;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  &:active {
+    transform: scale(.93);
+  }
+
+  &.active {
+    background: var(--text);
+    color: var(--bg);
+  }
+}
+
+.btn-hangup {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--red);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  box-shadow: 0 4px 24px rgba(255, 59, 48, .4);
+
+  svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  &:active {
+    transform: scale(.93);
+    opacity: .85;
+  }
+}
+
+// ─── Idle dialer screen ───────────────────────────────────────────────────────
+.dialer-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 32px;
+  animation: fadeIn .2s ease;
+}
+
+// Number display
+.number-display-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  padding: 0 56px 0 20px;
+  position: relative;
+  margin-bottom: 16px;
+
+  .number-display {
+    font-size: 40px;
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: 2px;
+    text-align: center;
+    word-break: break-all;
+    line-height: 1.1;
+  }
+
+  .btn-backspace {
+    position: absolute;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    transition: background .15s;
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    &:active {
+      background: var(--surface-2);
+    }
+  }
+}
+
+// Dialpad grid
+.dialpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 0 24px;
+  margin-bottom: 20px;
+}
+
+.dial-key {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--key-bg);
+  border: none;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .1s, transform .1s;
+  gap: 1px;
+  -webkit-tap-highlight-color: transparent;
+
+  &:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+  }
+
+  &:active:not(:disabled),
+  &.pressed {
+    background: var(--key-pressed);
+    transform: scale(.93);
+  }
+
+  .dial-digit {
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -.3px;
+  }
+
+  .dial-sub {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--text-2);
+    line-height: 1;
+  }
+}
+
+// Call row
+.call-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+
+  .call-row-side {
+    width: 56px;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+.btn-call {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--green);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+  box-shadow: 0 4px 20px rgba(52, 199, 89, .35);
+
+  svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  &:disabled {
+    background: var(--surface-2);
+    color: var(--text-3);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(.93);
+    opacity: .85;
+  }
+}
+
+.btn-clear {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  transition: background .15s;
+
+  &:active {
+    background: var(--surface-2);
+  }
+}
+
+.connect-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 16px;
+  cursor: pointer;
+  letter-spacing: .02em;
+
+  &:hover {
+    color: var(--text-2);
+  }
+}
+
+// ─── Shared circle buttons ────────────────────────────────────────────────────
+.btn-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity .2s, transform .1s;
+
+  svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  &:active {
+    transform: scale(.93);
+    opacity: .85;
+  }
+}
+
+.btn-reject {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(255, 59, 48, .35);
+}
+
+.btn-accept {
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(52, 199, 89, .35);
+}
+
+.action-label {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+// ─── Animations ───────────────────────────────────────────────────────────────
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .4;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.blink {
+  animation: blink-anim 1.2s step-start infinite;
+}
+
+@keyframes blink-anim {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .3;
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+@media (max-width: 390px) {
+  .dial-key .dial-digit {
+    font-size: 24px;
+  }
+  .number-display-wrap .number-display {
+    font-size: 34px;
+  }
+  .dialpad {
+    gap: 8px;
+    padding: 0 16px;
+  }
+  .call-row {
+    padding: 0 16px;
+  }
+}
+
+@media (min-height: 800px) {
+  .dialer-screen {
+    padding-bottom: 48px;
+  }
+  .dialpad {
+    margin-bottom: 28px;
+  }
+}

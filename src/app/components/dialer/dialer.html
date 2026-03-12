@@ -1,0 +1,270 @@
+<div class="phone-shell">
+
+  <!-- ════════════════════════════════════════════════════
+       STATUS BAR (top)
+  ═════════════════════════════════════════════════════ -->
+  <div class="status-bar">
+    <span class="status-time">{{ sip.statusLabel() }}</span>
+    <button class="settings-btn" (click)="showSettings.set(!showSettings())">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="3"/>
+        <path
+          d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <span class="status-indicator" [class]="statusDot()"></span>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════
+       SETTINGS PANEL (slide down)
+  ═════════════════════════════════════════════════════ -->
+  @if (showSettings()) {
+    <div class="settings-panel">
+      <div class="settings-title">Configuración SIP</div>
+      <div class="settings-field">
+        <label>WebSocket</label>
+        <input [value]="config().wsServer"
+               (input)="updateConfig('wsServer', $any($event.target).value)"
+               placeholder="wss://host:8089/ws"/>
+      </div>
+      <div class="settings-field">
+        <label>Dominio</label>
+        <input [value]="config().domain"
+               (input)="updateConfig('domain', $any($event.target).value)"
+               placeholder="host.nip.io"/>
+      </div>
+      <div class="settings-field">
+        <label>Usuario</label>
+        <input [value]="config().username"
+               (input)="updateConfig('username', $any($event.target).value)"
+               placeholder="webagent1"/>
+      </div>
+      <div class="settings-field">
+        <label>Contraseña</label>
+        <input type="password"
+               [value]="config().password"
+               (input)="updateConfig('password', $any($event.target).value)"
+               placeholder="••••••••"/>
+      </div>
+      @if (sip.sipStatus() === 'disconnected' || sip.sipStatus() === 'error') {
+        <button class="btn-connect-full" (click)="connect()">Conectar</button>
+      } @else if (sip.sipStatus() === 'connecting') {
+        <button class="btn-connect-full btn-connecting" disabled>Conectando...</button>
+      } @else {
+        <button class="btn-disconnect-full" (click)="disconnect()">Desconectar</button>
+      }
+      @if (errorMsg()) {
+        <div class="error-msg">{{ errorMsg() }}</div>
+      }
+    </div>
+  }
+
+  <!-- ════════════════════════════════════════════════════
+       INCOMING CALL SCREEN
+  ═════════════════════════════════════════════════════ -->
+  @if (sip.callStatus() === 'ringing') {
+    <div class="incoming-screen">
+      <div class="incoming-top">
+        <div class="incoming-label">Llamada entrante</div>
+        <div class="caller-avatar incoming-avatar">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="incoming-number">{{ sip.incomingCall()?.remoteIdentity?.uri?.user ?? 'Desconocido' }}</div>
+        <div class="incoming-sub">Móvil</div>
+      </div>
+      <div class="incoming-actions">
+        <div class="incoming-action-col">
+          <button class="btn-circle btn-reject" (click)="rejectCall()">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08C.11 12.9 0 12.65 0 12.38c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+            </svg>
+          </button>
+          <span class="action-label">Rechazar</span>
+        </div>
+        <div class="incoming-action-col">
+          <button class="btn-circle btn-accept" (click)="acceptCall()">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+            </svg>
+          </button>
+          <span class="action-label">Contestar</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ════════════════════════════════════════════════════
+       ACTIVE CALL SCREEN
+  ═════════════════════════════════════════════════════ -->
+  @if (sip.callStatus() === 'active' || sip.callStatus() === 'calling' || sip.callStatus() === 'ending') {
+    <div class="active-screen">
+      <!-- Caller info -->
+      <div class="active-top">
+        <div class="caller-avatar">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+        </div>
+        <div class="active-number">{{ destination() }}</div>
+        <div class="active-status">
+          @if (sip.callStatus() === 'calling') {
+            <span class="blink">Llamando...</span>
+          } @else if (sip.callStatus() === 'active') {
+            {{ sip.formattedDuration() }}
+          } @else {
+            Finalizando...
+          }
+        </div>
+      </div>
+
+      <!-- DTMF dialpad during call -->
+      @if (showDialpad()) {
+        <div class="mini-dialpad">
+          @for (key of keys; track key.digit) {
+            <button class="mini-key"
+                    [class.pressed]="pressedKey() === key.digit"
+                    (click)="pressKey(key.digit)">
+              <span class="mini-digit">{{ key.digit }}</span>
+            </button>
+          }
+        </div>
+      }
+
+      <!-- In-call controls -->
+      <div class="active-controls">
+        <div class="controls-row">
+          <!-- Mute -->
+          <div class="control-item">
+            <button class="btn-control" [class.active]="isMuted()" (click)="toggleMute()">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                @if (!isMuted()) {
+                  <path
+                    d="M12 14c1.7 0 3-1.3 3-3V5c0-1.7-1.3-3-3-3S9 3.3 9 5v6c0 1.7 1.3 3 3 3zm5.3-3c0 3-2.5 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.4 2.7 6.2 6 6.7V21h2v-3.3c3.3-.5 6-3.3 6-6.7h-1.7z"/>
+                } @else {
+                  <path
+                    d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3-1.66 0-3 1.34-3 3v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
+                }
+              </svg>
+            </button>
+            <span class="control-label">{{ isMuted() ? 'Sin silencio' : 'Silenciar' }}</span>
+          </div>
+
+          <!-- Dialpad toggle -->
+          <div class="control-item">
+            <button class="btn-control" [class.active]="showDialpad()" (click)="toggleDialpad()">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M12 19c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM6 7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-12c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6 0c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0-6c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 12c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
+              </svg>
+            </button>
+            <span class="control-label">Teclado</span>
+          </div>
+
+          <!-- Speaker -->
+          <div class="control-item">
+            <button class="btn-control" [class.active]="isSpeaker()" (click)="toggleSpeaker()">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+              </svg>
+            </button>
+            <span class="control-label">Altavoz</span>
+          </div>
+        </div>
+
+        <!-- Hangup -->
+        <button class="btn-hangup" (click)="hangup()">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08C.11 12.9 0 12.65 0 12.38c0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ════════════════════════════════════════════════════
+       IDLE DIALER SCREEN
+  ═════════════════════════════════════════════════════ -->
+  @if (!sip.isCalling() && sip.callStatus() !== 'ringing') {
+    <div class="dialer-screen">
+
+      <!-- Number display -->
+      <div class="number-display-wrap">
+        <div class="number-display">{{ destination() || '' }}</div>
+        @if (destination()) {
+          <button class="btn-backspace" (click)="backspace()">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-3 12.59L17.59 17 14 13.41 10.41 17 9 15.59 12.59 12 9 8.41 10.41 7 14 10.59 17.59 7 19 8.41 15.41 12 19 15.59z"/>
+            </svg>
+          </button>
+        }
+      </div>
+
+      <!-- Dialpad -->
+      <div class="dialpad">
+        @for (key of keys; track key.digit) {
+          <button
+            class="dial-key"
+            [class.pressed]="pressedKey() === key.digit"
+            [disabled]="!sip.isRegistered()"
+            (click)="pressKey(key.digit)">
+            <span class="dial-digit">{{ key.digit }}</span>
+            @if (key.sub) {
+              <span class="dial-sub">{{ key.sub }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Call button row -->
+      <div class="call-row">
+        <!-- Spacer -->
+        <div class="call-row-side"></div>
+
+        <!-- Call button -->
+        <button
+          class="btn-call"
+          [disabled]="!sip.isRegistered() || !destination().trim()"
+          (click)="call()">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+          </svg>
+        </button>
+
+        <!-- Backspace (right side) -->
+        <div class="call-row-side">
+          @if (destination()) {
+            <button class="btn-clear" (click)="clearAll()">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px">
+                <path
+                  d="M22 3H7c-.69 0-1.23.35-1.59.88L0 12l5.41 8.11c.36.53.9.89 1.59.89h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-3 12.59L17.59 17 14 13.41 10.41 17 9 15.59 12.59 12 9 8.41 10.41 7 14 10.59 17.59 7 19 8.41 15.41 12 19 15.59z"/>
+              </svg>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Connect hint -->
+      @if (!sip.isRegistered()) {
+        <div class="connect-hint" (click)="showSettings.set(true)">
+          @if (sip.sipStatus() === 'connecting') {
+            <span class="blink">Conectando...</span>
+          } @else {
+            Toca ⚙ para conectar
+          }
+        </div>
+      }
+
+    </div>
+  }
+
+</div>

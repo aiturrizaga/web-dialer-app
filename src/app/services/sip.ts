@@ -242,17 +242,12 @@ export class SipService implements OnDestroy {
     const pc = sdh?.peerConnection;
     if (!pc) return;
 
-    const connect = (stream: MediaStream) => {
-      // Usar AudioContext en lugar de elemento <audio>
-      // AudioContext no tiene restricciones de autoplay
-      this.audioContext = new AudioContext();
-      this.audioSource = this.audioContext.createMediaStreamSource(stream);
-      this.audioSource.connect(this.audioContext.destination);
-      console.log('[SIP] AudioContext state:', this.audioContext.state);
+    (window as any).__pc = pc;
 
-      // Resume por si acaso está suspendido
-      if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
+    pc.ontrack = (event: RTCTrackEvent) => {
+      console.log('[SIP] ontrack:', event.track.kind);
+      if (event.track.kind === 'audio') {
+        this.connectAudioTrack(event.streams[0] ?? new MediaStream([event.track]));
       }
     };
 
@@ -261,16 +256,39 @@ export class SipService implements OnDestroy {
     if (receivers.length > 0) {
       const stream = new MediaStream(receivers.map(r => r.track));
       console.log('[SIP] existing track:', receivers[0].track.kind, receivers[0].track.readyState);
-      connect(stream);
+      // Esperar un momento para que DTLS complete antes de conectar audio
+      setTimeout(() => this.connectAudioTrack(stream), 500);
+    }
+  }
+
+  private connectAudioTrack(stream: MediaStream): void {
+    // Cerrar AudioContext anterior
+    this.audioSource?.disconnect();
+    this.audioContext?.close();
+    this.audioContext = null;
+    this.audioSource = null;
+
+    // Usar elemento <audio> pero creado dentro del contexto de usuario
+    let el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
+    if (!el) {
+      el = document.createElement('audio');
+      el.id = 'sip-remote-audio';
+      el.autoplay = true;
+      el.setAttribute('playsinline', '');
+      document.body.appendChild(el);
     }
 
-    // Tracks que llegan después
-    pc.ontrack = (event: RTCTrackEvent) => {
-      console.log('[SIP] ontrack:', event.track.kind);
-      if (event.track.kind !== 'audio') return;
-      const stream = event.streams[0] ?? new MediaStream([event.track]);
-      connect(stream);
-    };
+    el.srcObject = stream;
+    el.volume = 1.0;
+
+    // Forzar play con interacción de usuario simulada via AudioContext
+    const ctx = new AudioContext();
+    ctx.resume().then(() => {
+      el.play()
+        .then(() => console.log('[SIP] Audio playing via element'))
+        .catch(e => console.warn('[SIP] play() error:', e));
+      ctx.close();
+    });
   }
 
   private clearAudio(): void {

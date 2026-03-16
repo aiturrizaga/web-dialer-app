@@ -25,15 +25,18 @@ export interface SipConfig {
 @Injectable({ providedIn: 'root' })
 export class SipService implements OnDestroy {
 
+  private audioContext: AudioContext | null = null;
+  private audioSource: MediaStreamAudioSourceNode | null = null;
+
   // ── Signals (reactive state) ──────────────────────────────────────────
-  readonly sipStatus   = signal<SipStatus>('disconnected');
-  readonly callStatus  = signal<CallStatus>('idle');
+  readonly sipStatus = signal<SipStatus>('disconnected');
+  readonly callStatus = signal<CallStatus>('idle');
   readonly callDuration = signal<number>(0);
   readonly incomingCall = signal<Invitation | null>(null);
 
   // ── Computed ──────────────────────────────────────────────────────────
   readonly isRegistered = computed(() => this.sipStatus() === 'registered');
-  readonly isCalling    = computed(() => {
+  readonly isCalling = computed(() => {
     const s = this.callStatus();
     return s !== 'idle' && s !== 'ending';
   });
@@ -41,24 +44,24 @@ export class SipService implements OnDestroy {
     const d = this.callDuration();
     const m = Math.floor(d / 60).toString().padStart(2, '0');
     const s = (d % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    return `${ m }:${ s }`;
   });
   readonly statusLabel = computed(() => {
     const map: Record<SipStatus, string> = {
       disconnected: 'Desconectado',
-      connecting:   'Conectando...',
-      registered:   'Registrado',
-      error:        'Error',
+      connecting: 'Conectando...',
+      registered: 'Registrado',
+      error: 'Error',
     };
     return map[this.sipStatus()];
   });
   readonly callStatusLabel = computed(() => {
     const map: Record<CallStatus, string> = {
-      idle:    '',
+      idle: '',
       calling: 'Llamando...',
       ringing: 'Llamada entrante',
-      active:  'En llamada',
-      ending:  'Finalizando...',
+      active: 'En llamada',
+      ending: 'Finalizando...',
     };
     return map[this.callStatus()];
   });
@@ -76,7 +79,7 @@ export class SipService implements OnDestroy {
     this.config = config;
     this.sipStatus.set('connecting');
 
-    const uri = UserAgent.makeURI(`sip:${config.username}@${config.domain}`);
+    const uri = UserAgent.makeURI(`sip:${ config.username }@${ config.domain }`);
     if (!uri) throw new Error('Invalid SIP URI');
 
     const options: UserAgentOptions = {
@@ -87,7 +90,24 @@ export class SipService implements OnDestroy {
       transportOptions: { server: config.wsServer } as Web.TransportOptions,
       sessionDescriptionHandlerFactoryOptions: {
         peerConnectionConfiguration: {
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ],
         },
       },
       delegate: {
@@ -107,7 +127,7 @@ export class SipService implements OnDestroy {
     // Listen BEFORE start() so we never miss a state transition
     this.registerer = new Registerer(this.ua);
     this.registerer.stateChange.addListener((state: RegistererState) => {
-      if (state === RegistererState.Registered)   this.sipStatus.set('registered');
+      if (state === RegistererState.Registered) this.sipStatus.set('registered');
       if (state === RegistererState.Unregistered) this.sipStatus.set('disconnected');
     });
 
@@ -128,7 +148,7 @@ export class SipService implements OnDestroy {
   async call(destination: string): Promise<void> {
     if (!this.ua || !this.config) throw new Error('Not connected');
 
-    const target = UserAgent.makeURI(`sip:+51${destination}@${this.config.domain}`);
+    const target = UserAgent.makeURI(`sip:+51${ destination }@${ this.config.domain }`);
     if (!target) throw new Error('Invalid destination');
 
     const inviter = new Inviter(this.ua, target, {
@@ -174,10 +194,13 @@ export class SipService implements OnDestroy {
       } else if (state === SessionState.Established) {
         await this.currentSession.bye();
       }
-    } catch (e) { console.warn('Hangup error:', e); }
+    } catch (e) {
+      console.warn('Hangup error:', e);
+    }
     this.currentSession = null;
     this.callStatus.set('idle');
     this.stopTimer();
+    this.clearAudio();
   }
 
   // ── DTMF ──────────────────────────────────────────────────────────────
@@ -207,7 +230,7 @@ export class SipService implements OnDestroy {
         case SessionState.Terminated:
           this.callStatus.set('idle');
           this.stopTimer();
-          this.cleanupAudio();
+          this.clearAudio();
           this.currentSession = null;
           break;
       }
@@ -216,38 +239,50 @@ export class SipService implements OnDestroy {
 
   private attachAudio(session: Session): void {
     const sdh = session.sessionDescriptionHandler as Web.SessionDescriptionHandler;
-    const pc  = sdh?.peerConnection;
+    const pc = sdh?.peerConnection;
     if (!pc) return;
 
-    // Crear elemento audio en el DOM si no existe
-    let el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
-    if (!el) {
-      el = document.createElement('audio');
-      el.id = 'sip-remote-audio';
-      el.autoplay = true;
-      el.setAttribute('playsinline', '');
-      document.body.appendChild(el);
-    }
+    const connect = (stream: MediaStream) => {
+      // Usar AudioContext en lugar de elemento <audio>
+      // AudioContext no tiene restricciones de autoplay
+      this.audioContext = new AudioContext();
+      this.audioSource = this.audioContext.createMediaStreamSource(stream);
+      this.audioSource.connect(this.audioContext.destination);
+      console.log('[SIP] AudioContext state:', this.audioContext.state);
 
-    pc.ontrack = (event: RTCTrackEvent) => {
-      console.log('[SIP] ontrack:', event.track.kind);
-      if (event.streams && event.streams[0]) {
-        el.srcObject = event.streams[0];
-        el.play().catch(e => console.warn('[SIP] play blocked:', e));
+      // Resume por si acaso está suspendido
+      if (this.audioContext.state === 'suspended') {
+        this.audioContext.resume();
       }
     };
 
     // Tracks ya presentes
-    const stream = new MediaStream();
-    pc.getReceivers().forEach(r => {
-      if (r.track) {
-        stream.addTrack(r.track);
-        console.log('[SIP] existing track:', r.track.kind, r.track.readyState);
-      }
-    });
-    if (stream.getTracks().length > 0) {
-      el.srcObject = stream;
-      el.play().catch(e => console.warn('[SIP] play blocked:', e));
+    const receivers = pc.getReceivers().filter(r => r.track?.kind === 'audio');
+    if (receivers.length > 0) {
+      const stream = new MediaStream(receivers.map(r => r.track));
+      console.log('[SIP] existing track:', receivers[0].track.kind, receivers[0].track.readyState);
+      connect(stream);
+    }
+
+    // Tracks que llegan después
+    pc.ontrack = (event: RTCTrackEvent) => {
+      console.log('[SIP] ontrack:', event.track.kind);
+      if (event.track.kind !== 'audio') return;
+      const stream = event.streams[0] ?? new MediaStream([event.track]);
+      connect(stream);
+    };
+  }
+
+  private clearAudio(): void {
+    this.audioSource?.disconnect();
+    this.audioSource = null;
+    this.audioContext?.close();
+    this.audioContext = null;
+    // Limpiar elemento audio si existe
+    const el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
+    if (el) {
+      el.pause();
+      el.srcObject = null;
     }
   }
 
@@ -267,13 +302,7 @@ export class SipService implements OnDestroy {
     this.callDuration.set(0);
   }
 
-  private cleanupAudio(): void {
-    const el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
-    if (el) {
-      el.pause();
-      el.srcObject = null;
-    }
+  ngOnDestroy(): void {
+    this.disconnect();
   }
-
-  ngOnDestroy(): void { this.disconnect(); }
 }

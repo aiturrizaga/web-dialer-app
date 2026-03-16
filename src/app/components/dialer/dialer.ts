@@ -26,7 +26,7 @@ export class Dialer {
     wsServer:    'wss://35.188.44.45.nip.io:8089/ws',
     domain:      '35.188.44.45.nip.io',
     username:    'webagent1',
-    password:    'xK9#mP2$vL8@nQ5w',
+    password:    'WebAgent2026Secure',
     displayName: 'Web Agent',
   });
 

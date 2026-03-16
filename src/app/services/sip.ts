@@ -113,9 +113,6 @@ export class SipService implements OnDestroy {
 
     await this.ua.start();
     await this.registerer.register();
-
-    this.remoteAudio = new Audio();
-    this.remoteAudio.autoplay = true;
   }
 
   async disconnect(): Promise<void> {
@@ -131,7 +128,7 @@ export class SipService implements OnDestroy {
   async call(destination: string): Promise<void> {
     if (!this.ua || !this.config) throw new Error('Not connected');
 
-    const target = UserAgent.makeURI(`sip:${destination}@${this.config.domain}`);
+    const target = UserAgent.makeURI(`sip:+51${destination}@${this.config.domain}`);
     if (!target) throw new Error('Invalid destination');
 
     const inviter = new Inviter(this.ua, target, {
@@ -219,50 +216,39 @@ export class SipService implements OnDestroy {
 
   private attachAudio(session: Session): void {
     const sdh = session.sessionDescriptionHandler as Web.SessionDescriptionHandler;
-    if (!sdh) return;
-
-    // Ensure audio element exists and is in the DOM
-    if (!this.remoteAudio) {
-      this.remoteAudio = document.createElement('audio');
-      this.remoteAudio.autoplay = true;
-      document.body.appendChild(this.remoteAudio);
-    }
-
-    const pc = sdh.peerConnection;
+    const pc  = sdh?.peerConnection;
     if (!pc) return;
 
-    const stream = new MediaStream();
-    this.remoteAudio.srcObject = stream;
+    // Crear elemento audio en el DOM si no existe
+    let el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
+    if (!el) {
+      el = document.createElement('audio');
+      el.id = 'sip-remote-audio';
+      el.autoplay = true;
+      el.setAttribute('playsinline', '');
+      document.body.appendChild(el);
+    }
 
-    // Add any tracks already present
-    pc.getReceivers().forEach(receiver => {
-      if (receiver.track) {
-        stream.addTrack(receiver.track);
-        console.log('[SIP] Added existing track:', receiver.track.kind, receiver.track.readyState);
-      }
-    });
-
-    // Listen for new tracks arriving after establishment
     pc.ontrack = (event: RTCTrackEvent) => {
-      console.log('[SIP] ontrack fired:', event.track.kind, event.streams.length);
-      event.streams.forEach(s => {
-        s.getTracks().forEach(track => {
-          if (!stream.getTracks().includes(track)) {
-            stream.addTrack(track);
-            console.log('[SIP] Added new track from ontrack:', track.kind);
-          }
-        });
-      });
-      // Fallback: attach first stream directly
-      if (event.streams[0] && this.remoteAudio) {
-        this.remoteAudio.srcObject = event.streams[0];
+      console.log('[SIP] ontrack:', event.track.kind);
+      if (event.streams && event.streams[0]) {
+        el.srcObject = event.streams[0];
+        el.play().catch(e => console.warn('[SIP] play blocked:', e));
       }
     };
 
-    // Try to play (browsers may require user gesture)
-    this.remoteAudio.play().catch(err => {
-      console.warn('[SIP] Audio autoplay blocked, will play on next user gesture:', err);
+    // Tracks ya presentes
+    const stream = new MediaStream();
+    pc.getReceivers().forEach(r => {
+      if (r.track) {
+        stream.addTrack(r.track);
+        console.log('[SIP] existing track:', r.track.kind, r.track.readyState);
+      }
     });
+    if (stream.getTracks().length > 0) {
+      el.srcObject = stream;
+      el.play().catch(e => console.warn('[SIP] play blocked:', e));
+    }
   }
 
   private startTimer(): void {
@@ -282,13 +268,10 @@ export class SipService implements OnDestroy {
   }
 
   private cleanupAudio(): void {
-    if (this.remoteAudio) {
-      this.remoteAudio.srcObject = null;
-      this.remoteAudio.pause();
-      if (this.remoteAudio.parentNode) {
-        this.remoteAudio.parentNode.removeChild(this.remoteAudio);
-      }
-      this.remoteAudio = null;
+    const el = document.getElementById('sip-remote-audio') as HTMLAudioElement;
+    if (el) {
+      el.pause();
+      el.srcObject = null;
     }
   }
 
